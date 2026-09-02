@@ -1,0 +1,18 @@
+table {
+    margin: 0px;
+    width: 300px;
+
+    border-collapse: collapse;
+    /*关键代码*/
+}
+
+th,
+td {
+    text-align: center;
+    border: 1px solid green;
+}
+
+input {
+    border: none;
+    width: 80px;
+}

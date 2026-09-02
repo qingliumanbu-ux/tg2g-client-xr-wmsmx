@@ -1,0 +1,262 @@
+diff --git a/node_modules/dom-align/dist-node/index.js b/node_modules/dom-align/dist-node/index.js
+index 9d91522..d02ff27 100644
+--- a/node_modules/dom-align/dist-node/index.js
++++ b/node_modules/dom-align/dist-node/index.js
+@@ -140,6 +140,7 @@ function getClientPosition(elem) {
+   var y;
+   var doc = elem.ownerDocument;
+   var body = doc.body;
++
+   var docElem = doc && doc.documentElement;
+   // 根据 GBS 最新数据，A-Grade Browsers 都已支持 getBoundingClientRect 方法，不用再考虑传统的实现方式
+   box = elem.getBoundingClientRect();
+@@ -170,9 +171,14 @@ function getClientPosition(elem) {
+   // 标准 ie 下 docElem.clientTop 就是 border-top
+   // ie7 html 即窗口边框改变不了。永远为 2
+   // 但标准 firefox/chrome/ie9 下 docElem.clientTop 是窗口边框，即使设了 border-top 也为 0
++  if (window.__POWERED_BY_WUJIE__) {
++    x -= window.$wujie.shadowRoot.body.clientLeft || window.$wujie.shadowRoot.body.clientLeft || 0;
++    y -= window.$wujie.shadowRoot.body.clientTop || window.$wujie.shadowRoot.body.clientTop || 0;
++  } else {
++    x -= docElem.clientLeft || body.clientLeft || 0;
++    y -= docElem.clientTop || body.clientTop || 0;
++  }
+ 
+-  x -= docElem.clientLeft || body.clientLeft || 0;
+-  y -= docElem.clientTop || body.clientTop || 0;
+   return {
+     left: x,
+     top: y
+@@ -195,6 +201,8 @@ function getScroll(w, top) {
+ function getScrollLeft(w) {
+   return getScroll(w);
+ }
++console.log('dist-node');
++
+ function getScrollTop(w) {
+   return getScroll(w, true);
+ }
+@@ -217,11 +225,21 @@ function isWindow(obj) {
+   return obj !== null && obj !== undefined && obj == obj.window;
+ }
+ function getDocument(node) {
++  console.log('I am a redux patch');
+   if (isWindow(node)) {
+-    return node.document;
++    if (window?.__POWERED_BY_WUJIE__) {
++      return window.$wujie.shadowRoot.document
++    } else {
++      return node.document;
++    }
+   }
+   if (node.nodeType === 9) {
+-    return node;
++    if (window?.__POWERED_BY_WUJIE__) {
++      return window.$wujie.shadowRoot.document
++    } else {
++      return node;
++
++    }
+   }
+   return node.ownerDocument;
+ }
+@@ -472,11 +490,11 @@ each(['Width', 'Height'], function (name) {
+   domUtils["doc".concat(name)] = function (refWin) {
+     var d = refWin.document;
+     return Math.max(
+-    // firefox chrome documentElement.scrollHeight< body.scrollHeight
+-    // ie standard mode : documentElement.scrollHeight> body.scrollHeight
+-    d.documentElement["scroll".concat(name)],
+-    // quirks : documentElement.scrollHeight 最大等于可视窗口多一点？
+-    d.body["scroll".concat(name)], domUtils["viewport".concat(name)](d));
++      // firefox chrome documentElement.scrollHeight< body.scrollHeight
++      // ie standard mode : documentElement.scrollHeight> body.scrollHeight
++      d.documentElement["scroll".concat(name)],
++      // quirks : documentElement.scrollHeight 最大等于可视窗口多一点？
++      d.body["scroll".concat(name)], domUtils["viewport".concat(name)](d));
+   };
+   domUtils["viewport".concat(name)] = function (win) {
+     // pc browser includes scrollbar in window.innerWidth
+@@ -696,8 +714,8 @@ function isAncestorFixed(element) {
+   var body = doc.body;
+   var parent = null;
+   for (parent = getParent$1(element);
+-  // 修复元素位于 document.documentElement 下导致崩溃问题
+-  parent && parent !== body && parent !== doc; parent = getParent$1(parent)) {
++    // 修复元素位于 document.documentElement 下导致崩溃问题
++    parent && parent !== body && parent !== doc; parent = getParent$1(parent)) {
+     var positionStyle = utils.css(parent, 'position');
+     if (positionStyle === 'fixed') {
+       return true;
+@@ -727,18 +745,18 @@ function getVisibleRectForElement(element, alwaysByViewport) {
+   while (el) {
+     // clientWidth is zero for inline block elements in ie.
+     if ((navigator.userAgent.indexOf('MSIE') === -1 || el.clientWidth !== 0) &&
+-    // body may have overflow set on it, yet we still get the entire
+-    // viewport. In some browsers, el.offsetParent may be
+-    // document.documentElement, so check for that too.
+-    el !== body && el !== documentElement && utils.css(el, 'overflow') !== 'visible') {
++      // body may have overflow set on it, yet we still get the entire
++      // viewport. In some browsers, el.offsetParent may be
++      // document.documentElement, so check for that too.
++      el !== body && el !== documentElement && utils.css(el, 'overflow') !== 'visible') {
+       var pos = utils.offset(el);
+       // add border
+       pos.left += el.clientLeft;
+       pos.top += el.clientTop;
+       visibleRect.top = Math.max(visibleRect.top, pos.top);
+       visibleRect.right = Math.min(visibleRect.right,
+-      // consider area without scrollBar
+-      pos.left + el.clientWidth);
++        // consider area without scrollBar
++        pos.left + el.clientWidth);
+       visibleRect.bottom = Math.min(visibleRect.bottom, pos.top + el.clientHeight);
+       visibleRect.left = Math.max(visibleRect.left, pos.left);
+     } else if (el === body || el === documentElement) {
+diff --git a/node_modules/dom-align/dist-web/index.js b/node_modules/dom-align/dist-web/index.js
+index 244557a..c425e75 100644
+--- a/node_modules/dom-align/dist-web/index.js
++++ b/node_modules/dom-align/dist-web/index.js
+@@ -169,7 +169,8 @@ function getClientPosition(elem) {
+   var box;
+   var x;
+   var y;
+-  var doc = elem.ownerDocument;
++  var doc;
++  doc = elem.ownerDocument;
+   var body = doc.body;
+   var docElem = doc && doc.documentElement;
+   // 根据 GBS 最新数据，A-Grade Browsers 都已支持 getBoundingClientRect 方法，不用再考虑传统的实现方式
+@@ -178,10 +179,12 @@ function getClientPosition(elem) {
+   // 注：jQuery 还考虑减去 docElem.clientLeft/clientTop
+   // 但测试发现，这样反而会导致当 html 和 body 有边距/边框样式时，获取的值不正确
+   // 此外，ie6 会忽略 html 的 margin 值，幸运地是没有谁会去设置 html 的 margin
+-
+-  x = Math.floor(box.left);
++  const offs = window.top?.document.querySelector('.qiankunlayout-left-sider')?.offsetWidth ?? 0;
++  x = Math.floor(box.left - offs);
+   y = Math.floor(box.top);
+ 
++
++
+   // In IE, most of the time, 2 extra pixels are added to the top and left
+   // due to the implicit 2-pixel inset border.  In IE6/7 quirks mode and
+   // IE6 standards mode, this border can be overridden by setting the
+@@ -201,9 +204,13 @@ function getClientPosition(elem) {
+   // 标准 ie 下 docElem.clientTop 就是 border-top
+   // ie7 html 即窗口边框改变不了。永远为 2
+   // 但标准 firefox/chrome/ie9 下 docElem.clientTop 是窗口边框，即使设了 border-top 也为 0
+-
+-  x -= docElem.clientLeft || body.clientLeft || 0;
+-  y -= docElem.clientTop || body.clientTop || 0;
++  if (window.__POWERED_BY_WUJIE__) {
++    x -= window.$wujie.shadowRoot.body.clientLeft || window.$wujie.shadowRoot.body.clientLeft || 0;
++    y -= window.$wujie.shadowRoot.body.clientTop || window.$wujie.shadowRoot.body.clientTop || 0;
++  } else {
++    x -= docElem.clientLeft || body.clientLeft || 0;
++    y -= docElem.clientTop || body.clientTop || 0;
++  }
+   return {
+     left: x,
+     top: y
+@@ -247,6 +254,7 @@ function isWindow(obj) {
+   /* eslint eqeqeq:0 */
+   return obj !== null && obj !== undefined && obj == obj.window;
+ }
++
+ function getDocument(node) {
+   if (isWindow(node)) {
+     return node.document;
+@@ -275,6 +283,7 @@ var RUNTIME_STYLE = 'runtimeStyle';
+ var LEFT = 'left';
+ var PX = 'px';
+ function _getComputedStyleIE(elem, name) {
++
+   // currentStyle maybe null
+   // http://msdn.microsoft.com/en-us/library/ms535231.aspx
+   var ret = elem[CURRENT_STYLE] && elem[CURRENT_STYLE][name];
+@@ -368,8 +377,14 @@ function setLeftTop(elem, offset, option) {
+   for (var key in offset) {
+     if (offset.hasOwnProperty(key)) {
+       var dir = getOffsetDirection(key, option);
++      var off;
+       var preset = key === 'left' ? presetH : presetV;
+-      var off = originalOffset[key] - old[key];
++      const offs = window.top?.document.querySelector('.qiankunlayout-left-sider')?.offsetWidth ?? 0;
++      if (window.__POWERED_BY_WUJIE__ && key === 'left' && Array.from(elem.classList).includes('ant-dropdown')) {
++        off = originalOffset[key] - old[key] - offs
++      } else {
++        off = originalOffset[key] - old[key];
++      }
+       if (dir === key) {
+         originalStyle[dir] = preset + off;
+       } else {
+@@ -503,11 +518,11 @@ each(['Width', 'Height'], function (name) {
+   domUtils["doc".concat(name)] = function (refWin) {
+     var d = refWin.document;
+     return Math.max(
+-    // firefox chrome documentElement.scrollHeight< body.scrollHeight
+-    // ie standard mode : documentElement.scrollHeight> body.scrollHeight
+-    d.documentElement["scroll".concat(name)],
+-    // quirks : documentElement.scrollHeight 最大等于可视窗口多一点？
+-    d.body["scroll".concat(name)], domUtils["viewport".concat(name)](d));
++      // firefox chrome documentElement.scrollHeight< body.scrollHeight
++      // ie standard mode : documentElement.scrollHeight> body.scrollHeight
++      d.documentElement["scroll".concat(name)],
++      // quirks : documentElement.scrollHeight 最大等于可视窗口多一点？
++      d.body["scroll".concat(name)], domUtils["viewport".concat(name)](d));
+   };
+   domUtils["viewport".concat(name)] = function (win) {
+     // pc browser includes scrollbar in window.innerWidth
+@@ -727,8 +742,8 @@ function isAncestorFixed(element) {
+   var body = doc.body;
+   var parent = null;
+   for (parent = getParent$1(element);
+-  // 修复元素位于 document.documentElement 下导致崩溃问题
+-  parent && parent !== body && parent !== doc; parent = getParent$1(parent)) {
++    // 修复元素位于 document.documentElement 下导致崩溃问题
++    parent && parent !== body && parent !== doc; parent = getParent$1(parent)) {
+     var positionStyle = utils.css(parent, 'position');
+     if (positionStyle === 'fixed') {
+       return true;
+@@ -758,18 +773,18 @@ function getVisibleRectForElement(element, alwaysByViewport) {
+   while (el) {
+     // clientWidth is zero for inline block elements in ie.
+     if ((navigator.userAgent.indexOf('MSIE') === -1 || el.clientWidth !== 0) &&
+-    // body may have overflow set on it, yet we still get the entire
+-    // viewport. In some browsers, el.offsetParent may be
+-    // document.documentElement, so check for that too.
+-    el !== body && el !== documentElement && utils.css(el, 'overflow') !== 'visible') {
++      // body may have overflow set on it, yet we still get the entire
++      // viewport. In some browsers, el.offsetParent may be
++      // document.documentElement, so check for that too.
++      el !== body && el !== documentElement && utils.css(el, 'overflow') !== 'visible') {
+       var pos = utils.offset(el);
+       // add border
+       pos.left += el.clientLeft;
+       pos.top += el.clientTop;
+       visibleRect.top = Math.max(visibleRect.top, pos.top);
+       visibleRect.right = Math.min(visibleRect.right,
+-      // consider area without scrollBar
+-      pos.left + el.clientWidth);
++        // consider area without scrollBar
++        pos.left + el.clientWidth);
+       visibleRect.bottom = Math.min(visibleRect.bottom, pos.top + el.clientHeight);
+       visibleRect.left = Math.max(visibleRect.left, pos.left);
+     } else if (el === body || el === documentElement) {
+@@ -1123,6 +1138,7 @@ function isOutOfVisibleRect(target, alwaysByViewport) {
+   return !visibleRect || targetRegion.left + targetRegion.width <= visibleRect.left || targetRegion.top + targetRegion.height <= visibleRect.top || targetRegion.left >= visibleRect.right || targetRegion.top >= visibleRect.bottom;
+ }
+ function alignElement(el, refNode, align) {
++
+   var target = align.target || refNode;
+   var refNodeRegion = getRegion(target);
+   var isTargetNotOutOfVisible = !isOutOfVisibleRect(target, align.overflow && align.overflow.alwaysByViewport);
+@@ -1137,6 +1153,7 @@ alignElement.__getVisibleRectForElement = getVisibleRectForElement;
+  */
+ 
+ function alignPoint(el, tgtPoint, align) {
++
+   var pageX;
+   var pageY;
+   var doc = utils.getDocument(el);
